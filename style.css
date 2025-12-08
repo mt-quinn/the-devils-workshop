@@ -279,6 +279,14 @@ main {
   background: #ff4b4b;
   color: #1a0a08;
 }
+.tile.v-9999 {
+  background: #ff6b6b;
+  color: #120707;
+}
+.tile.v-99999 {
+  background: #ff8585;
+  color: #120707;
+}
 .tile.v-999999 {
   background: #ffffff;
   color: #111;

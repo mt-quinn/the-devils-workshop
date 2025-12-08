@@ -12,7 +12,7 @@ const directions = [
   { name: "NW", dq: -1, dr: 0, vec: [-0.5, -Math.sqrt(3) / 2] },
 ];
 
-const valuesOrder = [1, 2, 3, 4, 5, 6, 66, 666, 777, 888, 999, 999999];
+const valuesOrder = [1, 2, 3, 4, 5, 6, 66, 666, 777, 888, 999, 9999, 99999, 999999];
 const valueClass = (v) => `v-${v}`;
 const cellKey = (q, r) => `${q},${r}`;
 
