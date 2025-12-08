@@ -545,6 +545,7 @@ function handlePointerDown(e) {
 
 function handlePointerMove(e) {
   if (!pointerStart || state.locked) return;
+  if (e.cancelable) e.preventDefault();
   const dx = e.clientX - pointerStart.x;
   const dy = e.clientY - pointerStart.y;
   const dir = directionFromVector(dx, dy);
@@ -578,12 +579,12 @@ function handleKeyUp(e) {
 }
 
 function setupInput() {
-  const shell = boardEl.parentElement;
-  shell.addEventListener("pointerdown", handlePointerDown);
-  shell.addEventListener("pointermove", handlePointerMove);
-  shell.addEventListener("pointerup", handlePointerUp);
-  shell.addEventListener("pointercancel", handlePointerUp);
-  shell.addEventListener("pointerleave", handlePointerUp);
+  const target = document;
+  target.addEventListener("pointerdown", handlePointerDown);
+  target.addEventListener("pointermove", handlePointerMove);
+  target.addEventListener("pointerup", handlePointerUp);
+  target.addEventListener("pointercancel", handlePointerUp);
+  target.addEventListener("pointerleave", handlePointerUp);
 
   document.addEventListener("keydown", handleKeyDown);
   document.addEventListener("keyup", handleKeyUp);
