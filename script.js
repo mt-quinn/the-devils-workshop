@@ -434,8 +434,8 @@ function performMove(dir) {
       state.satanSummoned = true;
       updateGoalText();
       showMessage("You have summoned Satan. Two tiles now spawn after each move. Reach 999,999 to kill Satan.", {
-        autoFade: true,
-        duration: 2600,
+        autoFade: false,
+        dismissible: true,
       });
     } else if (!hasMoves()) {
       showMessage("No moves left. Try again.");
@@ -447,10 +447,25 @@ function performMove(dir) {
 }
 
 function showMessage(text, options = {}) {
-  const { autoFade = false, duration = 2600 } = options;
+  const { autoFade = false, duration = 2600, dismissible = false } = options;
   if (!messageEl) return;
 
-  messageEl.textContent = text;
+  if (dismissible) {
+    messageEl.innerHTML = `
+      <div class="message-inner">
+        <p>${text}</p>
+        <button type="button" class="message-ok">OK</button>
+      </div>
+    `;
+    const btn = messageEl.querySelector(".message-ok");
+    if (btn) {
+      btn.addEventListener("click", () => {
+        hideMessage();
+      });
+    }
+  } else {
+    messageEl.textContent = text;
+  }
   messageEl.hidden = false;
   messageEl.classList.add("visible");
   messageEl.classList.remove("fade-out");
@@ -460,7 +475,7 @@ function showMessage(text, options = {}) {
     messageTimeoutId = null;
   }
 
-  if (autoFade) {
+  if (autoFade && !dismissible) {
     messageEl.classList.add("fade-out");
     messageTimeoutId = setTimeout(() => {
       messageTimeoutId = null;
