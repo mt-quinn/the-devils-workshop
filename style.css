@@ -1,23 +1,28 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap");
 
 :root {
-  --bg: #0f0e14;
-  --panel: #1a1822;
-  --cell: #292733;
-  --cell-border: #4a4557;
-  --tile-1: #f7e8d3;
-  --tile-2: #f6c2a1;
-  --tile-3: #f89d7c;
-  --tile-4: #f76b5c;
-  --tile-5: #d9485b;
-  --tile-6: #b4325c;
-  --tile-66: #92274d;
-  --tile-666: #e11433;
+  --bg: #050308;
+  --bg-accent: #120815;
+  --panel: #130f1c;
+  --panel-edge: #2d2335;
+  --cell: #181420;
+  --cell-inner: #0c0913;
+  --cell-border: #4a394f;
+  --tile-1: #f7eddc;
+  --tile-2: #f2c8a4;
+  --tile-3: #f3a57e;
+  --tile-4: #f0775d;
+  --tile-5: #e24b55;
+  --tile-6: #c13456;
+  --tile-66: #8c2448;
+  --tile-666: #f3123a;
   --tile-text: #0b0a0d;
-  --glow: #f04747;
+  --glow: #ff4655;
+  --glow-soft: rgba(255, 70, 85, 0.45);
   --text: #f5f5f7;
   --muted: #9b98a5;
-  --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-soft: 0 18px 40px rgba(0, 0, 0, 0.7);
+  --shadow-tight: 0 6px 18px rgba(0, 0, 0, 0.9);
 }
 
 * {
@@ -27,7 +32,10 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: radial-gradient(140% 140% at 50% 20%, #1b1923, #0c0b11);
+  background:
+    radial-gradient(180% 160% at 10% 0%, #35111f, transparent 55%),
+    radial-gradient(220% 200% at 90% 0%, #27104a, transparent 60%),
+    radial-gradient(160% 200% at 50% 100%, #090712, #050308);
   color: var(--text);
   font-family: "Inter", system-ui, -apple-system, sans-serif;
   display: flex;
@@ -42,6 +50,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  position: relative;
+  z-index: 1;
 }
 
 .topbar {
@@ -117,10 +127,13 @@ main {
 
 .board-shell {
   position: relative;
-  background: linear-gradient(180deg, #1f1c28, #15131c);
+  background:
+    radial-gradient(circle at 20% 0%, rgba(255, 255, 255, 0.06), transparent 55%),
+    radial-gradient(circle at 80% 100%, rgba(240, 70, 85, 0.11), transparent 60%),
+    linear-gradient(180deg, #171223, #0b0715);
   border-radius: 16px;
   padding: 12px;
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-soft);
   overflow: visible;
   touch-action: none;
 }
@@ -152,8 +165,8 @@ main {
   width: var(--cell-size);
   /* For a flat-topped regular hexagon, height = sqrt(3)/2 * width */
   height: calc(var(--cell-size) * 0.8660254);
-  background: var(--cell);
-  border: 1px solid var(--cell-border);
+  background: radial-gradient(circle at 50% 20%, #22182f, var(--cell-inner));
+  border: 1px solid rgba(198, 175, 255, 0.04);
   clip-path: polygon(
     25% 0%,
     75% 0%,
@@ -163,7 +176,11 @@ main {
     0% 50%
   );
   border-radius: 8px;
-  transition: box-shadow 120ms ease, border-color 120ms ease;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.02),
+    inset 0 -6px 10px rgba(0, 0, 0, 0.9),
+    0 4px 10px rgba(0, 0, 0, 0.9);
+  transition: box-shadow 160ms ease, border-color 160ms ease, background 160ms ease;
 }
 
 .cell-highlight {
@@ -223,7 +240,10 @@ main {
   white-space: pre-line;
   line-height: 1.05;
   z-index: 2;
-  transform: translate(var(--x, 0px), var(--y, 0px)) translate(-50%, -50%) scale(1);
+  transform:
+    translate(var(--x, 0px), var(--y, 0px))
+    translate(-50%, -50%)
+    scale(1);
   clip-path: polygon(
     25% 0%,
     75% 0%,
@@ -233,62 +253,44 @@ main {
     0% 50%
   );
   border-radius: 10px;
-  transition: transform 160ms ease-in-out, filter 160ms ease-in-out;
-  will-change: transform;
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  transition: transform 160ms ease-in-out, filter 160ms ease-in-out, box-shadow 160ms ease-in-out;
+  will-change: transform, filter;
+  box-shadow:
+    0 10px 20px rgba(0, 0, 0, 0.75),
+    0 0 0 1px rgba(0, 0, 0, 0.85);
+  background-color: var(--tile-tint, #ffffff);
 }
 
-.tile.v-1 {
-  background: var(--tile-1);
+.tile::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("./stonetexture.png");
+  background-size: auto;
+  background-position: var(--tx, 0px) var(--ty, 0px);
+  background-repeat: no-repeat;
+  opacity: 0.65;
+  mix-blend-mode: multiply;
+  pointer-events: none;
 }
-.tile.v-2 {
-  background: var(--tile-2);
-}
-.tile.v-3 {
-  background: var(--tile-3);
-}
-.tile.v-4 {
-  background: var(--tile-4);
-}
-.tile.v-5 {
-  background: var(--tile-5);
-  color: #fff;
-}
-.tile.v-6 {
-  background: var(--tile-6);
-  color: #fff;
-}
-.tile.v-66 {
-  background: var(--tile-66);
-  color: #fff;
-}
-.tile.v-666 {
-  background: var(--tile-666);
-  color: #fff;
-  box-shadow: 0 0 16px rgba(225, 20, 51, 0.6);
-}
-.tile.v-777 {
-  background: #f5a623;
-  color: #1a0a08;
-}
-.tile.v-888 {
-  background: #ff7e3b;
-  color: #1a0a08;
-}
-.tile.v-999 {
-  background: #ff4b4b;
-  color: #1a0a08;
-}
-.tile.v-9999 {
-  background: #ff6b6b;
-  color: #120707;
-}
-.tile.v-99999 {
-  background: #ff8585;
-  color: #120707;
-}
+
+
+.tile.v-1      { --tile-tint: #f7eddc; }
+.tile.v-2      { --tile-tint: #f2c8a4; }
+.tile.v-3      { --tile-tint: #f3a57e; }
+.tile.v-4      { --tile-tint: #f0775d; }
+.tile.v-5      { --tile-tint: #e24b55; color: #fff; }
+.tile.v-6      { --tile-tint: #c13456; color: #fff; }
+.tile.v-66     { --tile-tint: #8c2448; color: #fff; }
+.tile.v-666    { --tile-tint: #f3123a; color: #fff; box-shadow: 0 0 16px rgba(225, 20, 51, 0.6); }
+.tile.v-777    { --tile-tint: #f5a623; color: #1a0a08; }
+.tile.v-888    { --tile-tint: #ff7e3b; color: #1a0a08; }
+.tile.v-999    { --tile-tint: #ff4b4b; color: #1a0a08; }
+.tile.v-9999   { --tile-tint: #ff6b6b; color: #120707; }
+.tile.v-99999  { --tile-tint: #ff8585; color: #120707; }
 .tile.v-999999 {
-  background: #ffffff;
+  --tile-tint: #ffffff;
   color: #111;
   font-size: 16px;
   letter-spacing: 0.5px;

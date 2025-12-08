@@ -58,6 +58,9 @@ let messageTimeoutId = null;
 let edgeSvg = null;
 let boardWidth = 0;
 let boardHeight = 0;
+let stoneTexW = 512;
+let stoneTexH = 512;
+let stoneTexReady = false;
 
 const spawnChanceTwo = 0.5;
 const animationMs = 170;
@@ -150,6 +153,69 @@ function ensureEdgeSvg() {
   edgeSvg.setAttribute("width", String(boardWidth));
   edgeSvg.setAttribute("height", String(boardHeight));
   edgeSvg.setAttribute("viewBox", `0 0 ${boardWidth} ${boardHeight}`);
+}
+
+function ensureStoneTextureInfo() {
+  const img = new Image();
+  img.src = "./stonetexture.png";
+  img.onload = () => {
+    stoneTexW = img.naturalWidth || stoneTexW;
+    stoneTexH = img.naturalHeight || stoneTexH;
+    stoneTexReady = true;
+    tileEls.forEach((el, id) => {
+      setTileTextureOffset(el, id);
+    });
+  };
+}
+
+function setTileTextureOffset(el, id) {
+  if (!stoneTexReady) {
+    // Defer until texture info is available; use a neutral center crop.
+    el.style.setProperty("--tx", "0px");
+    el.style.setProperty("--ty", "0px");
+    return;
+  }
+
+  const tileW = cellSize;
+  const tileH = cellSize * 0.8660254;
+
+  const availW = Math.max(0, stoneTexW - tileW);
+  const availH = Math.max(0, stoneTexH - tileH);
+
+  if (availW === 0 && availH === 0) {
+    el.style.setProperty("--tx", "0px");
+    el.style.setProperty("--ty", "0px");
+    return;
+  }
+
+  // Golden-ratio-based pseudo-random but deterministic per id.
+  const u = (id * 0.61803398875) % 1;
+  const v = (id * 0.32471795724) % 1;
+
+  const maxMargin = Math.min(48, tileW * 0.6, tileH * 0.6);
+
+  const safeMarginX = Math.min(maxMargin, availW / 2);
+  const safeMarginY = Math.min(maxMargin, availH / 2);
+
+  let minX = 0;
+  let maxX = availW;
+  if (safeMarginX > 0) {
+    minX = safeMarginX;
+    maxX = availW - safeMarginX;
+  }
+
+  let minY = 0;
+  let maxY = availH;
+  if (safeMarginY > 0) {
+    minY = safeMarginY;
+    maxY = availH - safeMarginY;
+  }
+
+  const x = minX + (maxX - minX) * u;
+  const y = minY + (maxY - minY) * v;
+
+  el.style.setProperty("--tx", `${-x}px`);
+  el.style.setProperty("--ty", `${-y}px`);
 }
 
 function getHexVertices(q, r) {
@@ -351,6 +417,7 @@ function renderTiles(options = {}) {
     if (newIds.includes(tile.id)) el.classList.add("new");
     if (mergedIds.includes(tile.id)) el.classList.add("merged");
 
+    setTileTextureOffset(el, tile.id);
     el.style.setProperty("--x", `${pos.x}px`);
     el.style.setProperty("--y", `${pos.y}px`);
   });
@@ -610,6 +677,7 @@ function init() {
   buildCells();
   computeEdges();
   ensureEdgeSvg();
+  ensureStoneTextureInfo();
   setupInput();
   document.getElementById("new-game").addEventListener("click", resetGame);
    updateGoalText();
