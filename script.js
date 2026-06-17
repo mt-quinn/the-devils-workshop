@@ -655,17 +655,6 @@ function spawnSparks(x, y, tier) {
   }
 }
 
-function spawnScorePopup(x, y, value, tier) {
-  const el = document.createElement("div");
-  el.className = tier >= 6 ? "score-popup hot" : "score-popup";
-  el.textContent = `+${value}`;
-  el.style.left = `${x}px`;
-  el.style.top = `${y}px`;
-  el.style.fontSize = `${14 + tier * 2.2}px`;
-  boardEl.appendChild(el);
-  el.addEventListener("animationend", () => el.remove(), { once: true });
-}
-
 function reactBoard(topTier) {
   const shell = document.querySelector(".board-shell");
   if (!shell) return;
@@ -701,7 +690,6 @@ function celebrateMerge(mergedInfo) {
     const pos = positions.get(cellKey(m.q, m.r));
     if (!pos) return;
     spawnSparks(pos.x, pos.y, tier);
-    spawnScorePopup(pos.x, pos.y, m.value, tier);
   });
   reactBoard(topTier);
   buzz(topTier);

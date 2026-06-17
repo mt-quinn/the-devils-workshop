@@ -633,29 +633,6 @@ main {
   100% { opacity: 0; transform: translate(-50%, -50%) translate(var(--tx, 0px), var(--ty, 0px)) scale(0.35); }
 }
 
-/* Floating "+value" that makes merge magnitude legible. */
-.score-popup {
-  position: absolute;
-  z-index: 6;
-  pointer-events: none;
-  font-weight: 800;
-  color: #ffe7c2;
-  text-shadow: 0 0 8px rgba(255, 120, 50, 0.7), 0 2px 4px rgba(0, 0, 0, 0.6);
-  transform: translate(-50%, -50%);
-  animation: popup-rise 820ms ease-out forwards;
-}
-
-.score-popup.hot {
-  color: #fff6ea;
-  text-shadow: 0 0 10px rgba(255, 90, 40, 0.95), 0 0 22px rgba(255, 45, 30, 0.7), 0 2px 4px rgba(0, 0, 0, 0.6);
-}
-
-@keyframes popup-rise {
-  0%   { opacity: 0; transform: translate(-50%, -50%) translateY(4px) scale(0.7); }
-  22%  { opacity: 1; transform: translate(-50%, -50%) translateY(-6px) scale(1.05); }
-  100% { opacity: 0; transform: translate(-50%, -50%) translateY(-42px) scale(1); }
-}
-
 /* Board reaction: a milestone screenshake. */
 .board-shell.shake {
   animation: board-shake 400ms ease-in-out;
