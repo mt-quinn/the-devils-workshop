@@ -29,8 +29,14 @@ const cellSet = new Set(cells.map((c) => cellKey(c.q, c.r)));
 const boardEl = document.getElementById("board");
 const messageEl = document.getElementById("message");
 const scoreEl = document.getElementById("score-value");
+const bestScoreEl = document.getElementById("best-score");
+const bestScorePanelEl = document.getElementById("best-score-panel");
 const bestTileEl = document.getElementById("best-tile");
-const taglineEl = document.getElementById("tagline");
+const objectiveEl = document.getElementById("objective");
+const objectiveTextEl = document.getElementById("objective-text");
+
+const SAVE_KEY = "devils-workshop-save-v1";
+const HIGH_SCORE_KEY = "devils-workshop-highscore-v1";
 
 const cellEls = new Map();
 const tileEls = new Map();
@@ -42,6 +48,7 @@ const state = {
   tiles: [],
   score: 0,
   bestTile: 0,
+  highScore: 0,
   locked: false,
   previewDir: null,
   satanSummoned: false,
@@ -119,12 +126,31 @@ function formatTileValue(value) {
   return String(value);
 }
 
+// Scale the gothic title so it always sits on one row beside the New Game
+// button, no matter the column width or the font's metrics. We grow to a max
+// then shrink one px at a time until the header row no longer overflows.
+function fitTitle() {
+  const row = document.querySelector(".header-row");
+  const title = document.querySelector(".title");
+  if (!row || !title) return;
+  const MAX = 40;
+  const MIN = 14;
+  let size = MAX;
+  title.style.fontSize = size + "px";
+  while (size > MIN && row.scrollWidth > row.clientWidth) {
+    size -= 1;
+    title.style.fontSize = size + "px";
+  }
+}
+
 function updateGoalText() {
-  if (!taglineEl) return;
+  if (!objectiveTextEl) return;
   if (state.satanSummoned) {
-    taglineEl.textContent = "You summoned Satan. Reach 999,999 to kill Satan.";
+    objectiveTextEl.innerHTML = 'Reach 999,999 to <s>kill</s> banish Satan';
+    if (objectiveEl) objectiveEl.classList.add("summoned");
   } else {
-    taglineEl.innerHTML = 'Hex-based 2048. Reach 666 to <s>win</s> summon Satan.';
+    objectiveTextEl.innerHTML = 'Reach 666 to <s>win</s> summon Satan';
+    if (objectiveEl) objectiveEl.classList.remove("summoned");
   }
 }
 
@@ -412,7 +438,13 @@ function renderTiles(options = {}) {
       tileEls.set(tile.id, el);
     }
 
-    el.textContent = formatTileValue(tile.value);
+    let label = el.querySelector(".num");
+    if (!label) {
+      label = document.createElement("span");
+      label.className = "num";
+      el.appendChild(label);
+    }
+    label.textContent = formatTileValue(tile.value);
     el.className = `tile ${valueClass(tile.value)}`;
     if (newIds.includes(tile.id)) el.classList.add("new");
     if (mergedIds.includes(tile.id)) el.classList.add("merged");
@@ -423,9 +455,103 @@ function renderTiles(options = {}) {
   });
 }
 
+let lastShownScore = 0;
+
 function updateHud() {
+  if (state.score > lastShownScore) {
+    scoreEl.classList.remove("bump");
+    void scoreEl.offsetWidth; // restart the animation
+    scoreEl.classList.add("bump");
+  }
+  lastShownScore = state.score;
   scoreEl.textContent = state.score;
   bestTileEl.textContent = state.bestTile;
+  bestScoreEl.textContent = state.highScore;
+}
+
+// --- Persistence -----------------------------------------------------------
+// The in-progress game and the all-time best score are stored separately so a
+// fresh game never wipes the high score.
+
+function loadHighScore() {
+  try {
+    const raw = localStorage.getItem(HIGH_SCORE_KEY);
+    const n = raw == null ? 0 : Number(raw);
+    state.highScore = Number.isFinite(n) && n > 0 ? n : 0;
+  } catch (e) {
+    state.highScore = 0;
+  }
+}
+
+function recordHighScore() {
+  if (state.score > state.highScore) {
+    state.highScore = state.score;
+    try {
+      localStorage.setItem(HIGH_SCORE_KEY, String(state.highScore));
+    } catch (e) {
+      /* storage unavailable — keep playing without persistence */
+    }
+    // Brief celebratory flash on the Best panel.
+    if (bestScorePanelEl) {
+      bestScorePanelEl.classList.remove("record");
+      void bestScorePanelEl.offsetWidth; // restart the animation
+      bestScorePanelEl.classList.add("record");
+    }
+  }
+}
+
+function saveGame() {
+  try {
+    const payload = {
+      tiles: state.tiles.map((t) => ({ id: t.id, q: t.q, r: t.r, value: t.value })),
+      score: state.score,
+      bestTile: state.bestTile,
+      satanSummoned: state.satanSummoned,
+      nextId,
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
+  } catch (e) {
+    /* storage unavailable — game still works, just won't persist */
+  }
+}
+
+function clearSavedGame() {
+  try {
+    localStorage.removeItem(SAVE_KEY);
+  } catch (e) {
+    /* ignore */
+  }
+}
+
+function loadSavedGame() {
+  let data;
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return false;
+    data = JSON.parse(raw);
+  } catch (e) {
+    return false;
+  }
+  if (!data || !Array.isArray(data.tiles) || data.tiles.length === 0) return false;
+
+  const validTiles = data.tiles.filter(
+    (t) =>
+      t &&
+      cellSet.has(cellKey(t.q, t.r)) &&
+      valuesOrder.includes(t.value)
+  );
+  if (validTiles.length === 0) return false;
+
+  state.tiles = validTiles.map((t) => ({ id: t.id, q: t.q, r: t.r, value: t.value }));
+  state.score = Number.isFinite(data.score) ? data.score : 0;
+  state.bestTile = Number.isFinite(data.bestTile)
+    ? data.bestTile
+    : Math.max(...state.tiles.map((t) => t.value));
+  state.satanSummoned = !!data.satanSummoned;
+  nextId = Number.isFinite(data.nextId)
+    ? data.nextId
+    : Math.max(0, ...state.tiles.map((t) => t.id)) + 1;
+  return true;
 }
 
 function spawnRandomTile() {
@@ -488,7 +614,9 @@ function performMove(dir) {
       newIds,
       mergedIds: plan.mergedNewIds,
     });
+    recordHighScore();
     updateHud();
+    saveGame();
 
     const justSummoned =
       !state.satanSummoned &&
@@ -496,6 +624,7 @@ function performMove(dir) {
       state.bestTile < 999999;
 
     if (checkWin()) {
+      clearSavedGame();
       showMessage("You killed Satan. Victory!");
     } else if (justSummoned) {
       state.satanSummoned = true;
@@ -505,6 +634,7 @@ function performMove(dir) {
         dismissible: true,
       });
     } else if (!hasMoves()) {
+      clearSavedGame();
       showMessage("No moves left. Try again.");
     } else {
       hideMessage();
@@ -551,6 +681,40 @@ function showMessage(text, options = {}) {
   }
 }
 
+function showConfirm(text, onConfirm) {
+  if (!messageEl) {
+    if (onConfirm) onConfirm();
+    return;
+  }
+  if (messageTimeoutId) {
+    clearTimeout(messageTimeoutId);
+    messageTimeoutId = null;
+  }
+  messageEl.innerHTML = `
+    <div class="message-inner">
+      <p>${text}</p>
+      <div class="message-actions">
+        <button type="button" class="message-cancel">Cancel</button>
+        <button type="button" class="message-ok">New Game</button>
+      </div>
+    </div>
+  `;
+  const okBtn = messageEl.querySelector(".message-ok");
+  const cancelBtn = messageEl.querySelector(".message-cancel");
+  if (okBtn) {
+    okBtn.addEventListener("click", () => {
+      hideMessage();
+      if (onConfirm) onConfirm();
+    });
+  }
+  if (cancelBtn) {
+    cancelBtn.addEventListener("click", () => hideMessage());
+  }
+  messageEl.hidden = false;
+  messageEl.classList.add("visible");
+  messageEl.classList.remove("fade-out");
+}
+
 function hideMessage() {
   if (!messageEl) return;
   if (messageTimeoutId) {
@@ -573,6 +737,18 @@ function resetGame() {
   spawnRandomTile();
   renderTiles({ newIds: state.tiles.map((t) => t.id) });
   updateHud();
+  saveGame();
+}
+
+// Wipe the in-progress game, but only confirm first if there's progress worth
+// protecting (so an accidental tap doesn't erase a long run).
+function requestNewGame() {
+  if (state.locked) return;
+  if (state.score > 0) {
+    showConfirm("Start a new game? Your current board will be cleared.", resetGame);
+  } else {
+    resetGame();
+  }
 }
 
 function directionFromVector(dx, dy) {
@@ -679,9 +855,26 @@ function init() {
   ensureEdgeSvg();
   ensureStoneTextureInfo();
   setupInput();
-  document.getElementById("new-game").addEventListener("click", resetGame);
-   updateGoalText();
-  resetGame();
+  document.getElementById("new-game").addEventListener("click", requestNewGame);
+
+  loadHighScore();
+  if (loadSavedGame()) {
+    hideMessage();
+    updateGoalText();
+    renderTiles({ newIds: state.tiles.map((t) => t.id) });
+    lastShownScore = state.score; // resuming — don't bump as if just scored
+    updateHud();
+  } else {
+    updateGoalText();
+    resetGame();
+  }
+
+  fitTitle();
+  // The blackletter font loads asynchronously; re-fit once it's ready so we
+  // measure with the real glyph widths rather than the fallback serif.
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(fitTitle);
+  }
 }
 
 window.addEventListener("resize", () => {
@@ -690,6 +883,7 @@ window.addEventListener("resize", () => {
   computeEdges();
   ensureEdgeSvg();
   renderTiles();
+  fitTitle();
 });
 
 init();

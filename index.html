@@ -9,16 +9,23 @@
   <body>
     <div id="app">
       <header class="topbar">
-        <div>
-          <h1>The Devil's Workshop</h1>
-          <p id="tagline" class="tagline">Hex-based 2048. Reach 666 to <s>win</s> summon Satan.</p>
+        <div class="header-row">
+          <h1 class="title">The Devil's Workshop</h1>
+          <button id="new-game">New Game</button>
+        </div>
+        <div class="objective" id="objective">
+          <span class="objective-dot" aria-hidden="true"></span>
+          <span class="objective-text" id="objective-text">Reach 666 to <s>win</s> summon Satan</span>
         </div>
         <div class="controls">
-          <button id="new-game">New Game</button>
           <div class="scoreboard">
             <div class="score">
               <span class="label">Score</span>
               <span id="score-value">0</span>
+            </div>
+            <div class="score" id="best-score-panel">
+              <span class="label">Best</span>
+              <span id="best-score">0</span>
             </div>
             <div class="score">
               <span class="label">Best Tile</span>
@@ -32,9 +39,6 @@
         <div class="board-shell">
           <div id="board" aria-label="Hex board"></div>
           <div id="message" hidden></div>
-        </div>
-        <div class="instructions">
-          <p>Press and hold to preview a direction, release to commit. Arrow keys also preview (hold two for diagonals). The glowing edge shows where pieces will fall.</p>
         </div>
       </main>
     </div>
