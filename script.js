@@ -32,11 +32,13 @@ const scoreEl = document.getElementById("score-value");
 const bestScoreEl = document.getElementById("best-score");
 const bestScorePanelEl = document.getElementById("best-score-panel");
 const bestTileEl = document.getElementById("best-tile");
+const bestTilePanelEl = document.getElementById("best-tile-panel");
 const objectiveEl = document.getElementById("objective");
 const objectiveTextEl = document.getElementById("objective-text");
 
 const SAVE_KEY = "devils-workshop-save-v1";
 const HIGH_SCORE_KEY = "devils-workshop-highscore-v1";
+const BEST_TILE_KEY = "devils-workshop-besttile-v1";
 
 const cellEls = new Map();
 const tileEls = new Map();
@@ -48,6 +50,7 @@ const state = {
   tiles: [],
   score: 0,
   bestTile: 0,
+  bestTileAllTime: 0,
   highScore: 0,
   locked: false,
   previewDir: null,
@@ -465,7 +468,7 @@ function updateHud() {
   }
   lastShownScore = state.score;
   scoreEl.textContent = state.score;
-  bestTileEl.textContent = state.bestTile;
+  bestTileEl.textContent = state.bestTileAllTime;
   bestScoreEl.textContent = state.highScore;
 }
 
@@ -496,6 +499,35 @@ function recordHighScore() {
       bestScorePanelEl.classList.remove("record");
       void bestScorePanelEl.offsetWidth; // restart the animation
       bestScorePanelEl.classList.add("record");
+    }
+  }
+}
+
+function loadBestTile() {
+  try {
+    const raw = localStorage.getItem(BEST_TILE_KEY);
+    const n = raw == null ? 0 : Number(raw);
+    state.bestTileAllTime = Number.isFinite(n) && n > 0 ? n : 0;
+  } catch (e) {
+    state.bestTileAllTime = 0;
+  }
+}
+
+// The all-time best tile persists across new games (like the high score),
+// while state.bestTile stays per-game because it drives spawn rate and the
+// summon trigger.
+function recordBestTile() {
+  if (state.bestTile > state.bestTileAllTime) {
+    state.bestTileAllTime = state.bestTile;
+    try {
+      localStorage.setItem(BEST_TILE_KEY, String(state.bestTileAllTime));
+    } catch (e) {
+      /* storage unavailable — keep playing without persistence */
+    }
+    if (bestTilePanelEl) {
+      bestTilePanelEl.classList.remove("record");
+      void bestTilePanelEl.offsetWidth; // restart the animation
+      bestTilePanelEl.classList.add("record");
     }
   }
 }
@@ -615,6 +647,7 @@ function performMove(dir) {
       mergedIds: plan.mergedNewIds,
     });
     recordHighScore();
+    recordBestTile();
     updateHud();
     saveGame();
 
@@ -858,6 +891,7 @@ function init() {
   document.getElementById("new-game").addEventListener("click", requestNewGame);
 
   loadHighScore();
+  loadBestTile();
   if (loadSavedGame()) {
     hideMessage();
     updateGoalText();

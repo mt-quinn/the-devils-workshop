@@ -428,6 +428,7 @@ main {
   content: "";
   position: absolute;
   inset: 0;
+  z-index: 0;
   background-image: url("./stonetexture.png");
   background-size: auto;
   background-position: var(--tx, 0px) var(--ty, 0px);
@@ -437,10 +438,26 @@ main {
   pointer-events: none;
 }
 
+/* Domed shading that follows the hex: a top-lit highlight and a shadowed
+   lower edge give the piece the same dimensionality as the empty cells.
+   Sits above the stone texture but below the numeral. */
+.tile::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    radial-gradient(78% 62% at 50% 12%, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0) 60%),
+    radial-gradient(95% 75% at 50% 106%, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0) 58%);
+}
+
 
 /* Numerals render in a child .num span so a gradient can be clipped into the
    glyph shapes (background-clip: text) while the tile keeps its own fill. */
 .tile .num {
+  position: relative;
+  z-index: 2;
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
