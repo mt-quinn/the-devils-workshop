@@ -616,6 +616,97 @@ function hasMoves() {
   return false;
 }
 
+// --- Merge celebration -----------------------------------------------------
+// Every channel below is driven off a single "tier": the resulting tile's rank
+// in the value ladder (0..13). Higher merges read louder across every sense at
+// once. The loud channels (screenshake, hitstop) are reserved for milestone
+// merges so ordinary merges stay snappy.
+
+function mergeTier(value) {
+  const i = valuesOrder.indexOf(value);
+  return i < 0 ? 0 : i;
+}
+
+function spawnSparks(x, y, tier) {
+  const count = Math.min(28, 5 + tier * 2);
+  const reach = 24 + tier * 6;
+  const hot = tier >= 6;
+  const palette = hot
+    ? ["#fff3d6", "#ffce85", "#ff8a3d", "#ff3a23"]
+    : ["#fff6e6", "#ffe2ad", "#ffc878"];
+  for (let i = 0; i < count; i++) {
+    const p = document.createElement("div");
+    p.className = "spark";
+    const ang = Math.random() * Math.PI * 2;
+    const dist = reach * (0.45 + Math.random() * 0.75);
+    const dx = Math.cos(ang) * dist;
+    const dy = Math.sin(ang) * dist - reach * 0.25; // slight upward bias
+    const size = 3 + Math.random() * (hot ? 4 : 2.2);
+    p.style.left = `${x}px`;
+    p.style.top = `${y}px`;
+    p.style.width = `${size}px`;
+    p.style.height = `${size}px`;
+    p.style.background = palette[(Math.random() * palette.length) | 0];
+    p.style.setProperty("--tx", `${dx}px`);
+    p.style.setProperty("--ty", `${dy}px`);
+    p.style.setProperty("--d", `${380 + Math.random() * 360}ms`);
+    boardEl.appendChild(p);
+    p.addEventListener("animationend", () => p.remove(), { once: true });
+  }
+}
+
+function spawnScorePopup(x, y, value, tier) {
+  const el = document.createElement("div");
+  el.className = tier >= 6 ? "score-popup hot" : "score-popup";
+  el.textContent = `+${value}`;
+  el.style.left = `${x}px`;
+  el.style.top = `${y}px`;
+  el.style.fontSize = `${14 + tier * 2.2}px`;
+  boardEl.appendChild(el);
+  el.addEventListener("animationend", () => el.remove(), { once: true });
+}
+
+function reactBoard(topTier) {
+  const shell = document.querySelector(".board-shell");
+  if (!shell) return;
+  // Screenshake only for milestone merges (66 and up).
+  if (topTier >= 6) {
+    shell.style.setProperty("--shake", `${Math.min(10, 3 + (topTier - 6) * 1.1)}px`);
+    shell.classList.remove("shake");
+    void shell.offsetWidth;
+    shell.classList.add("shake");
+    setTimeout(() => shell.classList.remove("shake"), 420);
+  }
+}
+
+function buzz(tier) {
+  if (!navigator.vibrate || tier < 1) return;
+  if (tier >= 6) {
+    navigator.vibrate([0, 16 + (tier - 6) * 4, 28, 12]);
+  } else {
+    navigator.vibrate(5 + tier * 2);
+  }
+}
+
+function celebrateMerge(mergedInfo) {
+  let topTier = 0;
+  mergedInfo.forEach((m) => {
+    const tier = mergeTier(m.value);
+    topTier = Math.max(topTier, tier);
+    const el = tileEls.get(m.id);
+    if (el) {
+      el.style.setProperty("--pop", String(Math.min(0.45, 0.12 + tier * 0.024)));
+      el.style.setProperty("--flash", String(Math.min(2.2, 0.5 + tier * 0.13)));
+    }
+    const pos = positions.get(cellKey(m.q, m.r));
+    if (!pos) return;
+    spawnSparks(pos.x, pos.y, tier);
+    spawnScorePopup(pos.x, pos.y, m.value, tier);
+  });
+  reactBoard(topTier);
+  buzz(topTier);
+}
+
 function performMove(dir) {
   if (state.locked) return;
   const plan = planMove(dir);
@@ -627,52 +718,64 @@ function performMove(dir) {
   applyMovement(Array.from(plan.steps.values()));
 
   setTimeout(() => {
+    // Phase 1: land the merge and celebrate it.
+    const mergedInfo = plan.finalTiles
+      .filter((t) => t.justMerged)
+      .map((t) => ({ id: t.id, q: t.q, r: t.r, value: t.value }));
+
     state.tiles = plan.finalTiles.map((t) => ({ ...t, justMerged: undefined }));
     state.score += plan.scoreGain;
-    state.bestTile = Math.max(
-      state.bestTile,
-      ...state.tiles.map((t) => t.value)
-    );
-    const newIds = [];
-    const best = state.bestTile;
-    const spawnCount = best >= 666 ? 2 : 1;
+    state.bestTile = Math.max(state.bestTile, ...state.tiles.map((t) => t.value));
 
-    for (let i = 0; i < spawnCount; i++) {
-      const id = spawnRandomTile();
-      if (id != null) newIds.push(id);
-    }
-
-    renderTiles({
-      newIds,
-      mergedIds: plan.mergedNewIds,
-    });
+    renderTiles({ mergedIds: plan.mergedNewIds });
     recordHighScore();
     recordBestTile();
     updateHud();
-    saveGame();
 
-    const justSummoned =
-      !state.satanSummoned &&
-      state.bestTile >= 666 &&
-      state.bestTile < 999999;
-
-    if (checkWin()) {
-      clearSavedGame();
-      showMessage("You killed Satan. Victory!");
-    } else if (justSummoned) {
-      state.satanSummoned = true;
-      updateGoalText();
-      showMessage("You have summoned Satan. Two tiles now spawn after each move. Reach 999,999 to kill Satan.", {
-        autoFade: false,
-        dismissible: true,
-      });
-    } else if (!hasMoves()) {
-      clearSavedGame();
-      showMessage("No moves left. Try again.");
-    } else {
-      hideMessage();
+    let hitstopMs = 0;
+    if (mergedInfo.length) {
+      celebrateMerge(mergedInfo);
+      const topTier = Math.max(...mergedInfo.map((m) => mergeTier(m.value)));
+      // A brief weighty freeze before the board repopulates, milestone only.
+      if (topTier >= 6) hitstopMs = Math.min(80, 28 + (topTier - 6) * 8);
     }
-    state.locked = false;
+
+    // Phase 2: after the hitstop beat, spawn new tiles and resolve.
+    setTimeout(() => {
+      const newIds = [];
+      const spawnCount = state.bestTile >= 666 ? 2 : 1;
+      for (let i = 0; i < spawnCount; i++) {
+        const id = spawnRandomTile();
+        if (id != null) newIds.push(id);
+      }
+
+      renderTiles({ newIds, mergedIds: plan.mergedNewIds });
+      updateHud();
+      saveGame();
+
+      const justSummoned =
+        !state.satanSummoned &&
+        state.bestTile >= 666 &&
+        state.bestTile < 999999;
+
+      if (checkWin()) {
+        clearSavedGame();
+        showMessage("You killed Satan. Victory!");
+      } else if (justSummoned) {
+        state.satanSummoned = true;
+        updateGoalText();
+        showMessage("You have summoned Satan. Two tiles now spawn after each move. Reach 999,999 to kill Satan.", {
+          autoFade: false,
+          dismissible: true,
+        });
+      } else if (!hasMoves()) {
+        clearSavedGame();
+        showMessage("No moves left. Try again.");
+      } else {
+        hideMessage();
+      }
+      state.locked = false;
+    }, hitstopMs);
   }, animationMs);
 }
 
