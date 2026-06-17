@@ -41,18 +41,26 @@
   box-sizing: border-box;
 }
 
+html {
+  /* Fills the canvas behind the iOS status bar / safe areas so no white
+     strip shows through above the page background. */
+  background-color: #0a0612;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
+  min-height: 100dvh;
   background:
     radial-gradient(180% 160% at 10% 0%, #35111f, transparent 55%),
     radial-gradient(220% 200% at 90% 0%, #27104a, transparent 60%),
     radial-gradient(160% 200% at 50% 100%, #090712, #050308);
+  background-color: #0a0612;
   color: var(--text);
   font-family: "Inter", system-ui, -apple-system, sans-serif;
   display: flex;
   justify-content: center;
-  padding: 16px;
+  padding: max(16px, env(safe-area-inset-top)) 16px 16px;
   overflow: hidden;
   touch-action: none;
 }
