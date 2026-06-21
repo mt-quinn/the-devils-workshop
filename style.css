@@ -45,6 +45,8 @@ html {
   /* Fills the canvas behind the iOS status bar / safe areas so no white
      strip shows through above the page background. */
   background-color: #0a0612;
+  touch-action: none;
+  -ms-touch-action: none;
 }
 
 body {

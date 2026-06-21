@@ -960,6 +960,44 @@ function handleKeyUp(e) {
   }
 }
 
+// iOS Safari ignores the viewport's user-scalable=no, so block every zoom
+// gesture explicitly: pinch (gesture* + multi-touch), double-tap, and
+// desktop ctrl/⌘ + wheel. Pointer-based game input is unaffected.
+function preventZoom() {
+  ["gesturestart", "gesturechange", "gestureend"].forEach((evt) => {
+    document.addEventListener(evt, (e) => e.preventDefault(), { passive: false });
+  });
+
+  document.addEventListener(
+    "touchmove",
+    (e) => {
+      if (e.touches.length > 1) e.preventDefault();
+    },
+    { passive: false }
+  );
+
+  let lastTouchEnd = 0;
+  document.addEventListener(
+    "touchend",
+    (e) => {
+      const now = Date.now();
+      if (now - lastTouchEnd <= 350) e.preventDefault();
+      lastTouchEnd = now;
+    },
+    { passive: false }
+  );
+
+  document.addEventListener("dblclick", (e) => e.preventDefault(), { passive: false });
+
+  document.addEventListener(
+    "wheel",
+    (e) => {
+      if (e.ctrlKey) e.preventDefault();
+    },
+    { passive: false }
+  );
+}
+
 function setupInput() {
   const target = document;
   target.addEventListener("pointerdown", handlePointerDown);
@@ -979,6 +1017,7 @@ function init() {
   ensureEdgeSvg();
   ensureStoneTextureInfo();
   setupInput();
+  preventZoom();
   document.getElementById("new-game").addEventListener("click", requestNewGame);
 
   loadHighScore();
